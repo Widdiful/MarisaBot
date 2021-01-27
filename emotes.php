@@ -96,113 +96,160 @@ function toggleHidden(){
 	<?php
 function createThumbnail($image_name,$new_width,$new_height,$uploadDir,$moveToDir)
 {
-    $path = $uploadDir . '/' . $image_name;
+  $path = $uploadDir . '/' . $image_name;
 
-    $mime = getimagesize($path);
+  $mime = getimagesize($path);
 
-    if($mime['mime']=='image/png') { 
-        $src_img = imagecreatefrompng($path);
-    }
-    if($mime['mime']=='image/jpg' || $mime['mime']=='image/jpeg' || $mime['mime']=='image/pjpeg') {
-        $src_img = imagecreatefromjpeg($path);
-    }   
+  if($mime['mime']=='image/png') { 
+      $src_img = imagecreatefrompng($path);
+  }
+  if($mime['mime']=='image/jpg' || $mime['mime']=='image/jpeg' || $mime['mime']=='image/pjpeg') {
+      $src_img = imagecreatefromjpeg($path);
+  }   
 
-    $old_x          =   imageSX($src_img);
-    $old_y          =   imageSY($src_img);
+  $old_x          =   imageSX($src_img);
+  $old_y          =   imageSY($src_img);
 
-    if($old_x > $old_y) 
-    {
-        $thumb_w    =   $new_width;
-        $thumb_h    =   $old_y*($new_height/$old_x);
-    }
+  if($old_x > $old_y) 
+  {
+      $thumb_w    =   $new_width;
+      $thumb_h    =   $old_y*($new_height/$old_x);
+  }
 
-    if($old_x < $old_y) 
-    {
-        $thumb_w    =   $old_x*($new_width/$old_y);
-        $thumb_h    =   $new_height;
-    }
+  if($old_x < $old_y) 
+  {
+      $thumb_w    =   $old_x*($new_width/$old_y);
+      $thumb_h    =   $new_height;
+  }
 
-    if($old_x == $old_y) 
-    {
-        $thumb_w    =   $new_width;
-        $thumb_h    =   $new_height;
-    }
+  if($old_x == $old_y) 
+  {
+      $thumb_w    =   $new_width;
+      $thumb_h    =   $new_height;
+  }
 
-    $dst_img        =   ImageCreateTrueColor($thumb_w,$thumb_h);
+  $dst_img        =   ImageCreateTrueColor($thumb_w,$thumb_h);
 
-    imagecopyresampled($dst_img,$src_img,0,0,0,0,$thumb_w,$thumb_h,$old_x,$old_y); 
+  imagecopyresampled($dst_img,$src_img,0,0,0,0,$thumb_w,$thumb_h,$old_x,$old_y); 
 
 
-    // New save location
-    $new_thumb_loc = $moveToDir . $image_name;
+  // New save location
+  $new_thumb_loc = $moveToDir . $image_name;
 
-    if($mime['mime']=='image/png') {
-        $result = imagepng($dst_img,$new_thumb_loc,8);
-    }
-    if($mime['mime']=='image/jpg' || $mime['mime']=='image/jpeg' || $mime['mime']=='image/pjpeg') {
-        $result = imagejpeg($dst_img,$new_thumb_loc,80);
-    }
+  if($mime['mime']=='image/png') {
+      $result = imagepng($dst_img,$new_thumb_loc,8);
+  }
+  if($mime['mime']=='image/jpg' || $mime['mime']=='image/jpeg' || $mime['mime']=='image/pjpeg') {
+      $result = imagejpeg($dst_img,$new_thumb_loc,80);
+  }
 
-    imagedestroy($dst_img); 
-    imagedestroy($src_img);
+  imagedestroy($dst_img); 
+  imagedestroy($src_img);
 
-    return $result;
+  return $result;
 }
     
 $files = glob("emotes/*.*");
 usort($files, 'strnatcasecmp');
 $prev = '?';
-echo 'total emotes: ' . count($files) . '</br>' . 'randoms: gun, shades, smug, stare, thumbsup (use !randemote)' . '</br>';
+echo 'total emotes: ' . count($files) . '</br>' . 'randoms: gun, shades, smug, stare, thumbsup (use !randemote)' . '</br></br>';
 
-echo '<button class="collapsible">Text list</button><div class="collapsed">';
-for ($i = 0; $i < count($files); $i++) {
-    $image = $files[$i];
-	$next = strtoupper($image[7]);
-	$fname = str_replace("`Q", "?", pathinfo($image, PATHINFO_FILENAME));
-    
-	$hidden = substr($fname, -1) === "~";
-    
-	if (is_numeric($next)){
-		$next = "0-9";
-	}
-	if ($next != $prev){
-		echo '<br><br><b>' . $next . '</b></br>';
-	}
-	echo '!' . $fname . ', ';
-	$prev = $next;
-
+echo '<form action="emotes.php" method="get">Search: <input type="text" name="search_query" ';
+if (isset($_GET["search_query"]) && !isset($_GET["clear_search"])) {
+  echo 'value=' . filter_var($_GET["search_query"], FILTER_SANITIZE_STRING);
 }
-echo '</div>';
+echo '> <input type="submit" name="form_submit" value="Search"> <input type="submit" name="clear_search" value="Clear"><br></form>';
 
-for ($i = 0; $i < count($files); $i++) {
-    $image = $files[$i];
-	$next = strtoupper($image[7]);
-	$fname = str_replace("`Q", "?", pathinfo($image, PATHINFO_FILENAME));
-    /*$imagesmall = "emotes/resized/" . pathinfo($image, PATHINFO_BASENAME);
-    if (pathinfo($image, PATHINFO_EXTENSION) == "jpg" || pathinfo($image, PATHINFO_EXTENSION) == "png"){
-        if (!file_exists($imagesmall)){
-            createThumbnail(pathinfo($image, PATHINFO_BASENAME), 300, 300, "emotes", "emotes/resized/");
-        }
+if (isset($_GET["search_query"]) && isset($_GET["form_submit"]) && $_GET["form_submit"] === "Search") {
+  $needle = filter_var($_GET["search_query"], FILTER_SANITIZE_STRING);
+
+  $filtered = [];
+  if ($needle !== "") {
+    $filtered = array_values(array_filter($files, function($image) use ($needle) {
+      $fname = str_replace("`Q", "?", pathinfo($image, PATHINFO_FILENAME));
+      return strpos($fname, $needle) !== false;
+    }));
+  }
+
+  echo '<button class="collapsible">' . count($filtered) . ' search results for query "' . $needle . '"</button><div>';
+  for ($i = 0; $i < count($filtered); $i++) {
+    $image = $filtered[$i];
+    $fname = str_replace("`Q", "?", pathinfo($image, PATHINFO_FILENAME));
+
+    if (strpos($fname, $needle) === false) {
+      continue;
     }
-    else{
-        $imagesmall = $image;
-    }*/
-	$hidden = substr($fname, -1) === "~";
-    
-	if (is_numeric($next)){
-		$next = "0-9";
-	}
-	if ($next != $prev){
-		echo '</br></br><table width="100%"><tr bgcolor="ADDFAD"><th>' . $next . '</th></tr></table></br>';
-	}
-	if (!$hidden){
-		echo '<a class="fancybox" title="!' . $fname . '"rel="group" href="' . $image . '"><img class="img-zoom" src="' . $image .'"></a>';
-	}
-	else {
-		echo '<a class="hidden" style="display:none" class="fancybox" title="!' . $fname . '"rel="group" href="' . $image . '"><img class="img-zoom" src="' . $image .'"></a>';
-	}
-	$prev = $next;
 
+    $next = strtoupper($image[7]);
+      
+    $hidden = substr($fname, -1) === "~";
+      
+    if (is_numeric($next)){
+      $next = "0-9";
+    }
+    if ($next != $prev){
+      echo '</br></br><table width="100%"><tr bgcolor="ADDFAD"><th>' . $next . '</th></tr></table></br>';
+    }
+    if (!$hidden){
+      echo '<a class="fancybox" title="!' . $fname . '"rel="group" href="' . $image . '"><img class="img-zoom" src="' . $image .'"></a>';
+    }
+    else {
+      echo '<a class="hidden" style="display:none" class="fancybox" title="!' . $fname . '"rel="group" href="' . $image . '"><img class="img-zoom" src="' . $image .'"></a>';
+    }
+    $prev = $next;
+  }
+  echo '</div>';
+} else {
+  echo '<button class="collapsible">Text list</button><div class="collapsed">';
+  for ($i = 0; $i < count($files); $i++) {
+    $image = $files[$i];
+    $next = strtoupper($image[7]);
+    $fname = str_replace("`Q", "?", pathinfo($image, PATHINFO_FILENAME));
+      
+    $hidden = substr($fname, -1) === "~";
+      
+    if (is_numeric($next)){
+      $next = "0-9";
+    }
+    if ($next != $prev){
+      echo '<br><br><b>' . $next . '</b></br>';
+    }
+    echo '!' . $fname . ', ';
+    $prev = $next;
+
+  }
+  echo '</div>';
+
+  for ($i = 0; $i < count($files); $i++) {
+    $image = $files[$i];
+    $next = strtoupper($image[7]);
+    $fname = str_replace("`Q", "?", pathinfo($image, PATHINFO_FILENAME));
+      /*$imagesmall = "emotes/resized/" . pathinfo($image, PATHINFO_BASENAME);
+      if (pathinfo($image, PATHINFO_EXTENSION) == "jpg" || pathinfo($image, PATHINFO_EXTENSION) == "png"){
+          if (!file_exists($imagesmall)){
+              createThumbnail(pathinfo($image, PATHINFO_BASENAME), 300, 300, "emotes", "emotes/resized/");
+          }
+      }
+      else{
+          $imagesmall = $image;
+      }*/
+    $hidden = substr($fname, -1) === "~";
+      
+    if (is_numeric($next)){
+      $next = "0-9";
+    }
+    if ($next != $prev){
+      echo '</br></br><table width="100%"><tr bgcolor="ADDFAD"><th>' . $next . '</th></tr></table></br>';
+    }
+    if (!$hidden){
+      echo '<a class="fancybox" title="!' . $fname . '"rel="group" href="' . $image . '"><img class="img-zoom" src="' . $image .'"></a>';
+    }
+    else {
+      echo '<a class="hidden" style="display:none" class="fancybox" title="!' . $fname . '"rel="group" href="' . $image . '"><img class="img-zoom" src="' . $image .'"></a>';
+    }
+    $prev = $next;
+
+  }
 }
 ?>
 </a>
