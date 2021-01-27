@@ -154,15 +154,23 @@ usort($files, 'strnatcasecmp');
 $prev = '?';
 echo 'total emotes: ' . count($files) . '</br>' . 'randoms: gun, shades, smug, stare, thumbsup (use !randemote)' . '</br></br>';
 
+// Generate a form for the search box. This consists of a text box (which should contain the previous search term, if any),
+// a "Search" button which submits the form and reloads the page, and a "Clear" button which returns to viewing all emotes.
 echo '<form action="emotes.php" method="get">Search: <input type="text" name="search_query" ';
+// We provide an initial value *only* if there is a previous search query and we did not just clear the search.
+// Also, sanitize the search query string just in case it contains HTML.
 if (isset($_GET["search_query"]) && !isset($_GET["clear_search"])) {
   echo 'value=' . filter_var($_GET["search_query"], FILTER_SANITIZE_STRING);
 }
 echo '> <input type="submit" name="form_submit" value="Search"> <input type="submit" name="clear_search" value="Clear"><br></form>';
 
+// If the search query string is set, filter $files for filenames which have substrings matching the search query, and
+// then return those thumbnails only.
 if (isset($_GET["search_query"]) && isset($_GET["form_submit"]) && $_GET["form_submit"] === "Search") {
   $needle = filter_var($_GET["search_query"], FILTER_SANITIZE_STRING);
 
+  // If the search query is an empty string, we don't want to show anything; otherwise we could accidentally show all emotes,
+  // as the empty string is a substring of all strings, and that would be slow.
   $filtered = [];
   if ($needle !== "") {
     $filtered = array_values(array_filter($files, function($image) use ($needle) {
