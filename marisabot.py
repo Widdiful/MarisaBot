@@ -876,7 +876,7 @@ async def randemote(ctx):
 @bot.command(pass_context = True)        
 async def updateemote(ctx):
     """wid-only spell"""
-    if (ctx.message.author.id == "126081812714881025"):
+    if (ctx.message.author.id == 126081812714881025):
         emotes = os.listdir('emotes')
         await ctx.send("updating emotes...")
         await updateEmotes()
@@ -1022,7 +1022,7 @@ async def randpost(ctx):
     posts = [None] * 2
     attach = [None] * 2
     msg = ""
-    async for x in bot.logs_from(ctx.message.channel, limit=10000000, after=(datetime.datetime.now() - datetime.timedelta(days=7))):
+    async for x in ctx.message.channel.history(limit=10000000, after=(datetime.datetime.now() - datetime.timedelta(days=7))):
         if x.author.id == ctx.message.author.id:
             posts.append(x.content)
             if len(x.attachments) > 0:
@@ -1059,6 +1059,12 @@ async def twimg(ctx):
                     if len(tweet.media) > 1:
                         for i in range(1, len(tweet.media)):
                             await ctx.send(tweet.media[i].media_url)
+                    if 'video' in tweet.media[0].type:
+                        videos = tweet.media[0].video_info['variants']
+                        for i in range(0, len(videos)):
+                            if 'video/mp4' in videos[i]['content_type']:
+                                await ctx.send(tweet.media[0].video_info['variants'][i]['url'])
+                                break
                 else:
                     await ctx.send("sorry, twitter api is bad")
     if not 'twitter.com/' in ctx.message.content:
@@ -1132,6 +1138,9 @@ async def moneyness(ctx):
 @bot.command(pass_context = True)
 async def archive(ctx):
     if (ctx.message.author.id == 126081812714881025):
+        now = datetime.datetime.now()
+        timestamp = "%02d-%02d-%02d %02d%02d" % (now.year, now.month, now.day, now.hour, now.minute)
+    
         await ctx.send("starting archive...")
         messages = []
         async for x in ctx.channel.history(limit=10000000):
@@ -1145,12 +1154,13 @@ async def archive(ctx):
             currentMessage += ("\n")
             messages.append(currentMessage)
             
-        f = codecs.open("archives/" + ctx.message.channel.name + ".txt", "w+", "utf-8")
+        fname = "archives/" + ctx.message.channel.name + " " + timestamp + ".txt"
+        f = codecs.open(fname, "w+", "utf-8")
         for x in reversed(messages):
             f.write(x)
         f.close()
         await ctx.send("archive complete")
-        await ctx.channel.send(file=discord.File('archives/' + ctx.message.channel.name + '.txt'))
+        await ctx.channel.send(file=discord.File(fname))
     else:
         await ctx.send("wid use only")
     
@@ -1197,7 +1207,7 @@ async def userrank(ctx):
     
     msg = ctx.message.content.replace("!userrank", "")
     
-    specifyCount = 5
+    specifyCount = 20
     if len(msg) > 0:
         if msg.split()[0].isdigit():
             specifyCount = int(msg.split()[0])
@@ -1270,46 +1280,26 @@ async def on_message(message):
             if not message.content.startswith('!twimg'):
                 for i in message.content.split():
                     if 'http' in i and 'twitter.com/' in i:
-                        id = i.split('/')[-1].split('?')[0]
+                        id = i.split('/')[-1].split('?')[0].split('>')[0]
                         tweet = api.GetStatus(id)
                         if tweet:
                             if tweet.media is not None:
                                 if len(tweet.media) > 1:
                                     await message.channel.send('Tweet has ' + str(len(tweet.media)) + ' images.')
+                                if 'video' in tweet.media[0].type:
+                                    videos = tweet.media[0].video_info['variants']
+                                    for i in range(0, len(videos)):
+                                        if 'video/mp4' in videos[i]['content_type']:
+                                            await message.channel.send(tweet.media[0].video_info['variants'][i]['url'])
+                                            break
                     
-            # random tweeting
-            if random.randint(0, 128) == 10 and not '@' in message.content and not message.content.startswith('!') and not '||' in message.content:
-                if message.channel.id == 123611091086475264:
-                    global tweeted
-                    twtmsg = message.content.split()
-                    img = ''
-                    count = 0
-                    while count < len(twtmsg):
-                        if str(twtmsg[count]).startswith('http'):
-                            if '.jpg' in str(twtmsg[count]) or '.png' in str(twtmsg[count]) or '.gif' in str(twtmsg[count]):
-                                img = twtmsg[count]
-                                twtmsg.remove(twtmsg[count])
-                        count = count + 1
-                    if len(message.content) <= 140:
-                        tweet = str(' '.join(twtmsg))
-                        if img != '':
-                            tweeted = api.PostMedia(tweet, img)
-                        else:
-                            tweeted = api.PostUpdate(tweet)
-                        await message.channel.send('yoink! http://www.twitter.com/REALMarisaBot/status/' + str(tweeted.id) + ' ;)')
-                    if len(message.content) > 140:
-                        twtlen = random.randint(1, 140)
-                        twtstart = random.randint(0, len(twtmsg))
-                        tweet = str(' '.join(twtmsg))
-                        if img != '':
-                            tweeted = api.PostMedia(tweet[:twtlen], img)
-                        else:
-                            tweeted = api.PostUpdate(tweet[:twtlen])
-                        await message.channel.send('yoink! http://www.twitter.com/REALMarisaBot/status/' + str(tweeted.id) + ' ;)')
-                        
             marisatxt = []
-            for line in open('text/marisatxt.txt').readlines():
-                marisatxt.append(line.replace("\n", ""))
+            if message.channel.id == 360615236870340618:
+                for line in open('text/idolshit.txt').readlines():
+                    marisatxt.append(line.replace("\n", ""))
+            else:
+                for line in open('text/marisatxt.txt').readlines():
+                    marisatxt.append(line.replace("\n", ""))
             
             # reply to mentions
             for server in bot.guilds:
@@ -1346,10 +1336,41 @@ async def on_message(message):
             if message.content.startswith('!') and message.content.split()[0].endswith('ing') and isEmote == False:
                 await message.channel.send(message.content.split()[0].replace('!','').replace('ing', 'ong'))
                 
-            blockedChannels = [358378637583581194, 560947509464399892] # put any channel IDs in here if you dont want the bot to shitpost in there. commands will still run
+            blockedChannels = [358378637583581194, 560947509464399892, 733817438138794017, 306136568869945346] # put any channel IDs in here if you dont want the bot to shitpost in there. commands will still run
+            blockedUsers = [251166766741454848] # put any uer IDs in here so the bot doesn't shitpost them
             cocoID = 234834826081992704
-            if not message.content.startswith("!") and not message.channel.id in blockedChannels:        
+            if not message.content.startswith("!") and not message.channel.id in blockedChannels and not message.author.id in blockedUsers:        
                 msg = message.content.lower()
+                
+                # random tweeting
+                if random.randint(0, 128) == 10 and not '@' in message.content and not message.content.startswith('!') and not '||' in message.content:
+                    if message.channel.id == 123611091086475264:
+                        global tweeted
+                        twtmsg = message.content.split()
+                        img = ''
+                        count = 0
+                        while count < len(twtmsg):
+                            if str(twtmsg[count]).startswith('http'):
+                                if '.jpg' in str(twtmsg[count]) or '.png' in str(twtmsg[count]) or '.gif' in str(twtmsg[count]):
+                                    img = twtmsg[count]
+                                    twtmsg.remove(twtmsg[count])
+                            count = count + 1
+                        if len(message.content) <= 140:
+                            tweet = str(' '.join(twtmsg))
+                            if img != '':
+                                tweeted = api.PostMedia(tweet, img)
+                            else:
+                                tweeted = api.PostUpdate(tweet)
+                            await message.channel.send('yoink! http://www.twitter.com/REALMarisaBot/status/' + str(tweeted.id) + ' ;)')
+                        if len(message.content) > 140:
+                            twtlen = random.randint(1, 140)
+                            twtstart = random.randint(0, len(twtmsg))
+                            tweet = str(' '.join(twtmsg))
+                            if img != '':
+                                tweeted = api.PostMedia(tweet[:twtlen], img)
+                            else:
+                                tweeted = api.PostUpdate(tweet[:twtlen])
+                            await message.channel.send('yoink! http://www.twitter.com/REALMarisaBot/status/' + str(tweeted.id) + ' ;)')
                 
                 # post at random
                 postChance = 128
